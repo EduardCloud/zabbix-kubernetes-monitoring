@@ -15,6 +15,7 @@ rules:
   - ""
   resources:
   - pods
+  - pods/log
   - services
   - nodes
   - namespaces
