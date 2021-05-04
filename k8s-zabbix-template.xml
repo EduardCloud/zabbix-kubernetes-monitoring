@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <zabbix_export>
-    <version>5.0</version>
-    <date>2020-09-15T19:24:13Z</date>
+    <version>4.4</version>
+    <date>2021-05-04T08:24:52Z</date>
     <groups>
         <group>
             <name>Templates</name>
@@ -9,8 +9,8 @@
     </groups>
     <templates>
         <template>
-            <template>Kubernetes</template>
-            <name>Kubernetes</name>
+            <template>Kubernetes-Templates</template>
+            <name>Kubernetes-Templates</name>
             <groups>
                 <group>
                     <name>Templates</name>
@@ -45,14 +45,15 @@
             <discovery_rules>
                 <discovery_rule>
                     <name>ApiServices</name>
-                    <key>k8s.discovery[apiservices]</key>
+                    <type>EXTERNAL</type>
+                    <key>kubernetes-stats.py[{$CLUSTER_NAME},discovery,apiservices]</key>
                     <delay>50s</delay>
                     <lifetime>1h</lifetime>
                     <item_prototypes>
                         <item_prototype>
                             <name>ApiServices: {#NAME} Status Available</name>
-                            <key>k8s.stats[apiservices,{#NAME},Available]</key>
-                            <delay>60s</delay>
+                            <type>EXTERNAL</type>
+                            <key>kubernetes-stats.py[{$CLUSTER_NAME},stats,apiservices,{#NAME},Available]</key>
                             <trends>0</trends>
                             <value_type>TEXT</value_type>
                             <applications>
@@ -65,10 +66,9 @@
                             </applications>
                             <trigger_prototypes>
                                 <trigger_prototype>
-                                    <expression>{str(True)}=0</expression>
-                                    <name>ApiServices {#NAME} is not in Available State</name>
+                                    <expression>{count(#5,True,like)}=0</expression>
+                                    <name>[{#NAME}] ApiServices is not in Available State</name>
                                     <priority>AVERAGE</priority>
-                                    <manual_close>YES</manual_close>
                                 </trigger_prototype>
                             </trigger_prototypes>
                         </item_prototype>
@@ -76,7 +76,8 @@
                 </discovery_rule>
                 <discovery_rule>
                     <name>Clusters</name>
-                    <key>k8s.discovery[clusters]</key>
+                    <type>EXTERNAL</type>
+                    <key>kubernetes-stats.py[{$CLUSTER_NAME},discovery,clusters]</key>
                     <delay>50s</delay>
                     <status>DISABLED</status>
                     <lifetime>1h</lifetime>
@@ -84,7 +85,7 @@
                         <item_prototype>
                             <name>Cluster {#NAME} API Health Check</name>
                             <type>HTTP_AGENT</type>
-                            <key>k8s.cluster.api.health[{#NAME},{#APIURL}]</key>
+                            <key>kubernetes-stats.py[{#NAME},{#APIURL}]</key>
                             <delay>60s</delay>
                             <trends>0</trends>
                             <value_type>TEXT</value_type>
@@ -102,7 +103,7 @@
                             <trigger_prototypes>
                                 <trigger_prototype>
                                     <expression>{str(ok)}=0</expression>
-                                    <name>API {#APIURL} for cluster {#NAME} is not OK</name>
+                                    <name>[{#NAME}] Cluster API {#APIURL} is not OK</name>
                                     <priority>HIGH</priority>
                                 </trigger_prototype>
                             </trigger_prototypes>
@@ -111,14 +112,15 @@
                 </discovery_rule>
                 <discovery_rule>
                     <name>ComponentStatuses</name>
-                    <key>k8s.discovery[componentstatuses]</key>
+                    <type>EXTERNAL</type>
+                    <key>kubernetes-stats.py[{$CLUSTER_NAME},discovery,componentstatuses]</key>
                     <delay>50s</delay>
                     <lifetime>1h</lifetime>
                     <item_prototypes>
                         <item_prototype>
                             <name>ComponentStatuses: {#NAME} Status Healthy</name>
-                            <key>k8s.stats[componentstatuses,{#NAME},Healthy]</key>
-                            <delay>60s</delay>
+                            <type>EXTERNAL</type>
+                            <key>kubernetes-stats.py[{$CLUSTER_NAME},stats,componentstatuses,{#NAME},Healthy]</key>
                             <trends>0</trends>
                             <value_type>TEXT</value_type>
                             <applications>
@@ -132,9 +134,8 @@
                             <trigger_prototypes>
                                 <trigger_prototype>
                                     <expression>{str(True)}=0</expression>
-                                    <name>ComponentStatuses {#NAME} is not in Healthy State</name>
+                                    <name>[{#NAME}] ComponentStatuses is not in Healthy State</name>
                                     <priority>AVERAGE</priority>
-                                    <manual_close>YES</manual_close>
                                 </trigger_prototype>
                             </trigger_prototypes>
                         </item_prototype>
@@ -142,13 +143,15 @@
                 </discovery_rule>
                 <discovery_rule>
                     <name>Containers</name>
-                    <key>k8s.discovery[containers]</key>
+                    <type>EXTERNAL</type>
+                    <key>kubernetes-stats.py[{$CLUSTER_NAME},discovery,containers,{$POD_FILTER}]</key>
                     <delay>50s</delay>
                     <lifetime>0</lifetime>
                     <item_prototypes>
                         <item_prototype>
                             <name>Pod {#NAME} container {#CONTAINER} (ns {#NAMESPACE}) Status Ready</name>
-                            <key>k8s.stats[pods,{#NAMESPACE},{#NAME},containerReady,{#CONTAINER}]</key>
+                            <type>EXTERNAL</type>
+                            <key>kubernetes-stats.py[{$CLUSTER_NAME},stats,pods,{#NAMESPACE},{#NAME},containerReady,{#CONTAINER}]</key>
                             <delay>60s</delay>
                             <trends>0</trends>
                             <value_type>TEXT</value_type>
@@ -163,15 +166,15 @@
                             <trigger_prototypes>
                                 <trigger_prototype>
                                     <expression>{str(True,#3)}=0 and {nodata(100)}=0</expression>
-                                    <name>Pod {#NAME} container {#CONTAINER} (ns {#NAMESPACE}) is not in Ready State</name>
+                                    <name>[{#NAME}] Pod in container {#CONTAINER} (ns {#NAMESPACE}) is not in Ready State</name>
                                     <priority>WARNING</priority>
-                                    <manual_close>YES</manual_close>
                                 </trigger_prototype>
                             </trigger_prototypes>
                         </item_prototype>
                         <item_prototype>
                             <name>Pod {#NAME} container {#CONTAINER} (ns {#NAMESPACE}) Restart Count</name>
-                            <key>k8s.stats[pods,{#NAMESPACE},{#NAME},containerRestarts,{#CONTAINER}]</key>
+                            <type>EXTERNAL</type>
+                            <key>kubernetes-stats.py[{$CLUSTER_NAME},stats,pods,{#NAMESPACE},{#NAME},containerRestarts,{#CONTAINER}]</key>
                             <delay>60s</delay>
                             <applications>
                                 <application>
@@ -184,9 +187,8 @@
                             <trigger_prototypes>
                                 <trigger_prototype>
                                     <expression>{delta(600)}&gt;10</expression>
-                                    <name>Pod {#NAME} container {#CONTAINER} (ns {#NAMESPACE}) restart count &gt; {$CONTAINER_RESTARTS}</name>
+                                    <name>[{#NAME}] Pod in container {#CONTAINER} (ns {#NAMESPACE}) restart count &gt; {$CONTAINER_RESTARTS}</name>
                                     <priority>WARNING</priority>
-                                    <manual_close>YES</manual_close>
                                 </trigger_prototype>
                             </trigger_prototypes>
                         </item_prototype>
@@ -194,15 +196,15 @@
                 </discovery_rule>
                 <discovery_rule>
                     <name>Deployments</name>
-                    <key>k8s.discovery[deployments]</key>
+                    <type>EXTERNAL</type>
+                    <key>kubernetes-stats.py[{$CLUSTER_NAME},discovery,deployments]</key>
                     <delay>50s</delay>
-                    <lifetime>7d</lifetime>
+                    <lifetime>15d</lifetime>
                     <item_prototypes>
                         <item_prototype>
                             <name>Deployments: {#NAME} (ns {#NAMESPACE}) NOT UPDATED replicas</name>
                             <type>CALCULATED</type>
-                            <key>k8s.stats[deployments,{#NAMESPACE},{#NAME},notUpdated]</key>
-                            <delay>60s</delay>
+                            <key>kubernetes-stats.py[{$CLUSTER_NAME},stats,deployments,{#NAMESPACE},{#NAME},notUpdated]</key>
                             <params>last(&quot;k8s.stats[deployments,{#NAMESPACE},{#NAME},Replicas]&quot;)-last(&quot;k8s.stats[deployments,{#NAMESPACE},{#NAME},updatedReplicas]&quot;)</params>
                             <applications>
                                 <application>
@@ -215,16 +217,15 @@
                             <trigger_prototypes>
                                 <trigger_prototype>
                                     <expression>{min(#3)}&gt;0</expression>
-                                    <name>Deployment name {#NAME} (ns {#NAMESPACE}) number of not updated replicas &gt; 0</name>
+                                    <name>[{#NAME}] Deployment (ns {#NAMESPACE}) number of not updated replicas &gt; 0</name>
                                     <priority>HIGH</priority>
-                                    <manual_close>YES</manual_close>
                                 </trigger_prototype>
                             </trigger_prototypes>
                         </item_prototype>
                         <item_prototype>
                             <name>Deployments: {#NAME} (ns {#NAMESPACE}) Desired replicas</name>
-                            <key>k8s.stats[deployments,{#NAMESPACE},{#NAME},Replicas]</key>
-                            <delay>60s</delay>
+                            <type>EXTERNAL</type>
+                            <key>kubernetes-stats.py[{$CLUSTER_NAME},stats,deployments,{#NAMESPACE},{#NAME},Replicas]</key>
                             <applications>
                                 <application>
                                     <name>Kubernetes</name>
@@ -236,8 +237,8 @@
                         </item_prototype>
                         <item_prototype>
                             <name>Deployments: {#NAME} (ns {#NAMESPACE}) Status</name>
-                            <key>k8s.stats[deployments,{#NAMESPACE},{#NAME},statusReady]</key>
-                            <delay>60s</delay>
+                            <type>EXTERNAL</type>
+                            <key>kubernetes-stats.py[{$CLUSTER_NAME},stats,deployments,{#NAMESPACE},{#NAME},statusReady]</key>
                             <trends>0</trends>
                             <value_type>TEXT</value_type>
                             <applications>
@@ -251,16 +252,15 @@
                             <trigger_prototypes>
                                 <trigger_prototype>
                                     <expression>{str(True,#3)}=0</expression>
-                                    <name>Deployment {#NAME} (ns {#NAMESPACE}) is not in Available Status</name>
+                                    <name>[{#NAME}] Deployment (ns {#NAMESPACE}) is not in Available Status</name>
                                     <priority>HIGH</priority>
-                                    <manual_close>YES</manual_close>
                                 </trigger_prototype>
                             </trigger_prototypes>
                         </item_prototype>
                         <item_prototype>
                             <name>Deployments: {#NAME} (ns {#NAMESPACE}) UPDATED replicas</name>
-                            <key>k8s.stats[deployments,{#NAMESPACE},{#NAME},updatedReplicas]</key>
-                            <delay>60s</delay>
+                            <type>EXTERNAL</type>
+                            <key>kubernetes-stats.py[{$CLUSTER_NAME},stats,deployments,{#NAMESPACE},{#NAME},updatedReplicas]</key>
                             <applications>
                                 <application>
                                     <name>Kubernetes</name>
@@ -274,13 +274,14 @@
                 </discovery_rule>
                 <discovery_rule>
                     <name>Nodes</name>
-                    <key>k8s.discovery[nodes]</key>
+                    <type>EXTERNAL</type>
+                    <key>kubernetes-stats.py[{$CLUSTER_NAME},discovery,nodes]</key>
                     <delay>50s</delay>
                     <item_prototypes>
                         <item_prototype>
                             <name>Node: {#NAME} Status: DiskPressure</name>
-                            <key>k8s.stats[nodes,{#NAME},DiskPressure]</key>
-                            <delay>60s</delay>
+                            <type>EXTERNAL</type>
+                            <key>kubernetes-stats.py[{$CLUSTER_NAME},stats,nodes,{#NAME},DiskPressure]</key>
                             <trends>0</trends>
                             <value_type>TEXT</value_type>
                             <applications>
@@ -294,16 +295,15 @@
                             <trigger_prototypes>
                                 <trigger_prototype>
                                     <expression>{str(True)}=1</expression>
-                                    <name>Node {#NAME} DiskPressure</name>
+                                    <name>[{#NAME}] Node DiskPressure</name>
                                     <priority>HIGH</priority>
-                                    <manual_close>YES</manual_close>
                                 </trigger_prototype>
                             </trigger_prototypes>
                         </item_prototype>
                         <item_prototype>
                             <name>Node: {#NAME} Status: MemoryPressure</name>
-                            <key>k8s.stats[nodes,{#NAME},MemoryPressure]</key>
-                            <delay>60s</delay>
+                            <type>EXTERNAL</type>
+                            <key>kubernetes-stats.py[{$CLUSTER_NAME},stats,nodes,{#NAME},MemoryPressure]</key>
                             <trends>0</trends>
                             <value_type>TEXT</value_type>
                             <applications>
@@ -317,16 +317,15 @@
                             <trigger_prototypes>
                                 <trigger_prototype>
                                     <expression>{str(True)}=1</expression>
-                                    <name>Node {#NAME} MemoryPressure</name>
+                                    <name>[{#NAME}] Node MemoryPressure</name>
                                     <priority>HIGH</priority>
-                                    <manual_close>YES</manual_close>
                                 </trigger_prototype>
                             </trigger_prototypes>
                         </item_prototype>
                         <item_prototype>
                             <name>Node: {#NAME} Status: OutOfDisk</name>
-                            <key>k8s.stats[nodes,{#NAME},OutOfDisk]</key>
-                            <delay>60s</delay>
+                            <type>EXTERNAL</type>
+                            <key>kubernetes-stats.py[{$CLUSTER_NAME},stats,nodes,{#NAME},OutOfDisk]</key>
                             <trends>0</trends>
                             <value_type>TEXT</value_type>
                             <applications>
@@ -340,16 +339,15 @@
                             <trigger_prototypes>
                                 <trigger_prototype>
                                     <expression>{str(True)}=1</expression>
-                                    <name>Node {#NAME} OutOfDisk</name>
+                                    <name>[{#NAME}] Node OutOfDisk</name>
                                     <priority>HIGH</priority>
-                                    <manual_close>YES</manual_close>
                                 </trigger_prototype>
                             </trigger_prototypes>
                         </item_prototype>
                         <item_prototype>
                             <name>Node: {#NAME} Status: PIDPressure</name>
-                            <key>k8s.stats[nodes,{#NAME},PIDPressure]</key>
-                            <delay>60s</delay>
+                            <type>EXTERNAL</type>
+                            <key>kubernetes-stats.py[{$CLUSTER_NAME},stats,nodes,{#NAME},PIDPressure]</key>
                             <trends>0</trends>
                             <value_type>TEXT</value_type>
                             <applications>
@@ -363,16 +361,15 @@
                             <trigger_prototypes>
                                 <trigger_prototype>
                                     <expression>{str(True)}=1</expression>
-                                    <name>Node {#NAME} PIDPressure</name>
+                                    <name>[{#NAME}] Node PIDPressure</name>
                                     <priority>HIGH</priority>
-                                    <manual_close>YES</manual_close>
                                 </trigger_prototype>
                             </trigger_prototypes>
                         </item_prototype>
                         <item_prototype>
                             <name>Node: {#NAME} Status: Ready</name>
-                            <key>k8s.stats[nodes,{#NAME},Ready]</key>
-                            <delay>60s</delay>
+                            <type>EXTERNAL</type>
+                            <key>kubernetes-stats.py[{$CLUSTER_NAME},stats,nodes,{#NAME},Ready]</key>
                             <trends>0</trends>
                             <value_type>TEXT</value_type>
                             <applications>
@@ -385,10 +382,9 @@
                             </applications>
                             <trigger_prototypes>
                                 <trigger_prototype>
-                                    <expression>{str(True)}=0</expression>
-                                    <name>Node {#NAME} Ready</name>
+                                    <expression>{count(5m,True,like)}=0</expression>
+                                    <name>[{#NAME}] Node not Ready</name>
                                     <priority>HIGH</priority>
-                                    <manual_close>YES</manual_close>
                                 </trigger_prototype>
                             </trigger_prototypes>
                         </item_prototype>
@@ -396,14 +392,38 @@
                 </discovery_rule>
                 <discovery_rule>
                     <name>Pods</name>
-                    <key>k8s.discovery[pods]</key>
+                    <type>EXTERNAL</type>
+                    <key>kubernetes-stats.py[{$CLUSTER_NAME},discovery,pods,{$POD_FILTER}]</key>
                     <delay>50s</delay>
                     <lifetime>0</lifetime>
                     <item_prototypes>
                         <item_prototype>
+                            <name>Pod: {#NAME} (ns {#NAMESPACE}) Logs</name>
+                            <type>EXTERNAL</type>
+                            <key>kubernetes-stats.py[{$CLUSTER_NAME},stats,pods,{#NAMESPACE},{#NAME},PodLogs]</key>
+                            <history>15d</history>
+                            <trends>0</trends>
+                            <value_type>TEXT</value_type>
+                            <applications>
+                                <application>
+                                    <name>Kubernetes</name>
+                                </application>
+                                <application>
+                                    <name>Kubernetes Pods</name>
+                                </application>
+                            </applications>
+                            <trigger_prototypes>
+                                <trigger_prototype>
+                                    <expression>{regexp(error|fail|warn|forbidden)}=1</expression>
+                                    <name>[{#NAME}] Pod (ns {#NAMESPACE}) logs problem found</name>
+                                    <priority>AVERAGE</priority>
+                                </trigger_prototype>
+                            </trigger_prototypes>
+                        </item_prototype>
+                        <item_prototype>
                             <name>Pod: {#NAME} (ns {#NAMESPACE}) Phase</name>
-                            <key>k8s.stats[pods,{#NAMESPACE},{#NAME},statusPhase]</key>
-                            <delay>60s</delay>
+                            <type>EXTERNAL</type>
+                            <key>kubernetes-stats.py[{$CLUSTER_NAME},stats,pods,{#NAMESPACE},{#NAME},statusPhase]</key>
                             <trends>0</trends>
                             <value_type>TEXT</value_type>
                             <applications>
@@ -417,28 +437,47 @@
                             <trigger_prototypes>
                                 <trigger_prototype>
                                     <expression>{str(CrashLoopBackOff)}=1</expression>
-                                    <name>Pod {#NAME} (ns {#NAMESPACE}) phase &quot;CrashLoopBackOff&quot;</name>
+                                    <name>[{#NAME}] Pod (ns {#NAMESPACE}) phase &quot;CrashLoopBackOff&quot;</name>
                                     <priority>HIGH</priority>
-                                    <manual_close>YES</manual_close>
                                 </trigger_prototype>
                                 <trigger_prototype>
                                     <expression>{str(Failed)}=1</expression>
-                                    <name>Pod {#NAME} (ns {#NAMESPACE}) phase &quot;Failed&quot;</name>
+                                    <name>[{#NAME}] Pod (ns {#NAMESPACE}) phase &quot;Failed&quot;</name>
                                     <priority>HIGH</priority>
-                                    <manual_close>YES</manual_close>
                                 </trigger_prototype>
                                 <trigger_prototype>
                                     <expression>{str(Unknown)}=1</expression>
-                                    <name>Pod {#NAME} (ns {#NAMESPACE}) phase &quot;Unknown&quot;</name>
+                                    <name>[{#NAME}] Pod (ns {#NAMESPACE}) phase &quot;Unknown&quot;</name>
                                     <priority>HIGH</priority>
-                                    <manual_close>YES</manual_close>
+                                </trigger_prototype>
+                            </trigger_prototypes>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>Pod: {#NAME} (ns {#NAMESPACE}) Status</name>
+                            <type>EXTERNAL</type>
+                            <key>kubernetes-stats.py[{$CLUSTER_NAME},stats,pods,{#NAMESPACE},{#NAME},statusPod]</key>
+                            <trends>0</trends>
+                            <value_type>TEXT</value_type>
+                            <applications>
+                                <application>
+                                    <name>Kubernetes</name>
+                                </application>
+                                <application>
+                                    <name>Kubernetes Pods</name>
+                                </application>
+                            </applications>
+                            <trigger_prototypes>
+                                <trigger_prototype>
+                                    <expression>{count(#5,running,like)}=0</expression>
+                                    <name>[{#NAME}] Pod (ns {#NAMESPACE}) is not running</name>
+                                    <priority>HIGH</priority>
                                 </trigger_prototype>
                             </trigger_prototypes>
                         </item_prototype>
                         <item_prototype>
                             <name>Pod: {#NAME} (ns {#NAMESPACE}) Status Ready</name>
-                            <key>k8s.stats[pods,{#NAMESPACE},{#NAME},statusReady]</key>
-                            <delay>60s</delay>
+                            <type>EXTERNAL</type>
+                            <key>kubernetes-stats.py[{$CLUSTER_NAME},stats,pods,{#NAMESPACE},{#NAME},statusReady]</key>
                             <trends>0</trends>
                             <value_type>TEXT</value_type>
                             <applications>
@@ -452,8 +491,8 @@
                         </item_prototype>
                         <item_prototype>
                             <name>Pod: {#NAME} (ns {#NAMESPACE}) Status Failed, Reason Evicted</name>
-                            <key>k8s.stats[pods,{#NAMESPACE},{#NAME},statusReason]</key>
-                            <delay>60s</delay>
+                            <type>EXTERNAL</type>
+                            <key>kubernetes-stats.py[{$CLUSTER_NAME},stats,pods,{#NAMESPACE},{#NAME},statusReason]</key>
                             <trends>0</trends>
                             <value_type>TEXT</value_type>
                             <applications>
@@ -467,9 +506,8 @@
                             <trigger_prototypes>
                                 <trigger_prototype>
                                     <expression>{str(Evicted)}=1</expression>
-                                    <name>Pod {#NAME} (ns {#NAMESPACE}) status Evicted</name>
+                                    <name>[{#NAME}] Pod (ns {#NAMESPACE}) status Evicted</name>
                                     <priority>AVERAGE</priority>
-                                    <manual_close>YES</manual_close>
                                 </trigger_prototype>
                             </trigger_prototypes>
                         </item_prototype>
@@ -478,8 +516,14 @@
             </discovery_rules>
             <macros>
                 <macro>
+                    <macro>{$CLUSTER_NAME}</macro>
+                </macro>
+                <macro>
                     <macro>{$CONTAINER_RESTARTS}</macro>
                     <value>10</value>
+                </macro>
+                <macro>
+                    <macro>{$POD_FILTER}</macro>
                 </macro>
             </macros>
         </template>
