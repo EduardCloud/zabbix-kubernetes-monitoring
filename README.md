@@ -1,5 +1,7 @@
 # Description
-Tis is a fork from [zabbix-kubernetes-monitoring](https://github.com/sleepka/zabbix-kubernetes-monitoring), it is zabbix-agent script and template for zabbix server. It is used for Kubernetes monitoring by Zabbix. Easy to deploy and configure. Auto discovery of pods, deployments, services, etc.
+This is a fork from [zabbix-kubernetes-monitoring](https://github.com/sleepka/zabbix-kubernetes-monitoring), it is zabbix-agent script and template for zabbix server. It is used for Kubernetes monitoring by Zabbix. Easy to deploy and configure. Auto discovery of pods, deployments, services, etc.
+
+I added multi cluster feature and pod discovery filter by name.
 
 # Installation
 1. Copy [kubernetes-stats.py](https://raw.githubusercontent.com/EduardCloud/zabbix-kubernetes-monitoring/master/kubernetes-stats.py) to /usr/lib/zabbix/externalscripts/. Remind to give execute permission to the file: ``chown zabbix kubernetes-stats.py && chmod 770 kubernetes-stats.py``
