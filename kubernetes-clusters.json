@@ -1,0 +1,6 @@
+{
+"cluster1": {
+    "api_url": "https://API_SERVER_IP:PORT",
+    "access_token": "<ACCESS_TOKEN>"
+    }
+}
