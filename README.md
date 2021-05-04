@@ -6,7 +6,9 @@ Tis is a fork from [zabbix-kubernetes-monitoring](https://github.com/sleepka/zab
 2. Import Zabbix template ([Kubernetes-Template.xml](https://raw.githubusercontent.com/EduardCloud/zabbix-kubernetes-monitoring/master/Kubernetes-Template.xml)) to Zabbix server.
 3. Create zabbix user in Kubernetes (can use [zabbix-user-example.yml](https://raw.githubusercontent.com/EduardCloud/zabbix-kubernetes-monitoring/master/zabbix-user.yml)).
 4. Set the token and API server url in [kubernetes-clusters.json](https://raw.githubusercontent.com/EduardCloud/zabbix-kubernetes-monitoring/master/kubernetes-clusters.json) and left the file in /usr/lib/zabbix/externalscripts/ for multi cluster feature.
-5. Apply template to host
+5. Apply template to host, and set the Macros as your needs:
+``{$CLUSTER_NAME}``: Cluster name
+``{$POD_FILTER}``: Filter discovery by pod name (optional)
 
 ## How to create zabbix user in Kubernetes
 ```bash
