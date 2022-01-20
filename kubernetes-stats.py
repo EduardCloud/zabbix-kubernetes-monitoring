@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 .SYNOPSIS
-  This script discovers and check Kubernetes services.
+  This script discovers and check Kubernetes services, deployments, nodes, pods, components and logs.
 .NOTES
   Version:          1.0
   Author:           sleepka - https://github.com/sleepka/zabbix-kubernetes-monitoring
@@ -72,6 +72,11 @@ if sys.argv[2] == "discovery":
 elif sys.argv[2] == "stats":
     if "pods" == target and "PodLogs" not in sys.argv[6]:
         api_req = "/api/v1/" + target
+        if len(sys.argv) > 7 and len(sys.argv[7]) > 0:
+            refreshrate = int(sys.argv[7])
+        else:
+            refreshrate = 50
+
     elif "pods" == target and "PodLogs" in sys.argv[6]:
         api_req = "/api/v1/namespaces/" + sys.argv[4] + "/pods/" + sys.argv[5] + "/log?sinceSeconds=300"
 
@@ -113,18 +118,29 @@ def rawdata(qtime=50):
 
 
 def PodLogs():
-    # azure-fix to ignore selfsigned ssl cert
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
+    try:
+        # azure-fix to ignore selfsigned ssl cert
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
 
-    req = urllib2.Request(api_server + api_req)
-    req.add_header("Authorization", "Bearer " + token)
-    # Use context with no ssl check for selfsigned certs
-    rawdata = urllib2.urlopen(req, context=ctx).read()
-    # textdata = rawdata.text
-    output = rawdata.decode("utf-8")
-    return output
+        req = urllib2.Request(api_server + api_req)
+        req.add_header("Authorization", "Bearer " + token)
+        # Use context with no ssl check for selfsigned certs
+        rawdata = urllib2.urlopen(req, context=ctx).read()
+        # textdata = rawdata.text
+        output = rawdata.decode("utf-8")
+        return output
+
+    except urllib2.HTTPError as e:
+        if e.code == 404:
+            print("HTTP 404: Page not found, probably the pod was deleted")
+        elif e.code == 400:
+            print(
+                "HTTP 400: Bad request, probably the pod has multiple container (https://stackoverflow.com/a/47134395/3017197)"
+            )
+        else:
+            print("HTTP error code: " + str(e.code))
 
 
 def get_SSL_Expiry_Date(host, port):
@@ -253,9 +269,8 @@ if sys.argv[3] in targets:
             print(DateToExpire.days)
             quit()
 
-        # data = json.loads(rawdata(100))
         if "nodes" == sys.argv[3] or "apiservices" == sys.argv[3]:
-            data = json.loads(rawdata(100))
+            data = json.loads(rawdata())
             ItemFound = False
             for item in data["items"]:
                 if item["metadata"]["name"] == sys.argv[4]:
@@ -265,10 +280,10 @@ if sys.argv[3] in targets:
                             print(status["status"])
                             break
             if not ItemFound:
-                print("NodeNotFound")
+                print("NotFound")
 
         elif "componentstatuses" == sys.argv[3]:
-            data = json.loads(rawdata(100))
+            data = json.loads(rawdata())
             for item in data["items"]:
                 if item["metadata"]["name"] == sys.argv[4]:
                     for status in item["conditions"]:
@@ -276,8 +291,8 @@ if sys.argv[3] in targets:
                             print(status["status"])
                             break
 
-        elif "PodLogs" not in sys.argv[6] and "pods" == sys.argv[3] or "deployments" == sys.argv[3]:
-            data = json.loads(rawdata(100))
+        elif "PodLogs" not in sys.argv[6] and "pods" == sys.argv[3]:  # or "deployments" == sys.argv[3]:
+            data = json.loads(rawdata(refreshrate))
             for item in data["items"]:
                 if item["metadata"]["namespace"] == sys.argv[4] and item["metadata"]["name"] == sys.argv[5]:
                     if "statusPhase" == sys.argv[6]:
@@ -290,9 +305,7 @@ if sys.argv[3] in targets:
                             print(item["status"]["reason"])
                     elif "statusReady" == sys.argv[6]:
                         for status in item["status"]["conditions"]:
-                            if status["type"] == "Ready" or (
-                                status["type"] == "Available" and "deployments" == sys.argv[3]
-                            ):
+                            if status["type"] == "Ready":
                                 print(status["status"])
                                 break
                     elif "containerReady" == sys.argv[6]:
@@ -311,11 +324,24 @@ if sys.argv[3] in targets:
                             if status["name"] == sys.argv[7]:
                                 print(status["restartCount"])
                                 break
+
+        elif "PodLogs" not in sys.argv[6] and "deployments" == sys.argv[3]:
+            data = json.loads(rawdata())
+            ItemFound = False
+            for item in data["items"]:
+                if item["metadata"]["namespace"] == sys.argv[4] and item["metadata"]["name"] == sys.argv[5]:
+                    ItemFound = True
+                    if "statusReady" == sys.argv[6]:
+                        for status in item["status"]["conditions"]:
+                            if status["type"] == "Available" and "deployments" == sys.argv[3]:
+                                print(status["status"])
+                                break
                     elif "Replicas" == sys.argv[6]:
                         print(item["spec"]["replicas"])
                     elif "updatedReplicas" == sys.argv[6]:
                         print(item["status"]["updatedReplicas"])
-                    break
+            if not ItemFound:
+                print("NotFound")
 
         elif "pods" == sys.argv[3] and "PodLogs" in sys.argv[6]:
             data = PodLogs()
